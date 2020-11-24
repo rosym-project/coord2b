@@ -1,0 +1,2 @@
+add_executable(traffic_lights traffic_lights.c)
+target_link_libraries(traffic_lights coord2b)
