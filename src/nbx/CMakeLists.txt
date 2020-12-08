@@ -1,4 +1,4 @@
-add_library(coord2b SHARED fsm.c)
+add_library(coord2b SHARED fsm.c event_loop.c)
 
 install(
   TARGETS coord2b
