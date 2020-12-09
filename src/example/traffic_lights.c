@@ -68,28 +68,24 @@ void red_behavior(struct user_data * userData) {
     userData->redOn = true;
     userData->yellowOn = false;
     userData->greenOn = false;
-    generic_behavior(userData);
 }
 
 void red_yel_behavior(struct user_data * userData) {
     userData->redOn = true;
     userData->yellowOn = true;
     userData->greenOn = false;
-    generic_behavior(userData);
 }
 
 void green_behavior(struct user_data * userData) {
     userData->redOn = false;
     userData->yellowOn = false;
     userData->greenOn = true;
-    generic_behavior(userData);
 }
 
 void green_yel_behavior(struct user_data * userData) {
     userData->redOn = false;
     userData->yellowOn = true;
     userData->greenOn = false;
-    generic_behavior(userData);
 }
 
 void fsm_behavior(struct events *eventData, struct user_data * userData) {
@@ -107,6 +103,10 @@ void fsm_behavior(struct events *eventData, struct user_data * userData) {
 
     if (consume_event(eventData, E_GREEN_YELLOW_ENTERED)) {
         green_yel_behavior(userData);
+    }
+
+    if (consume_event(eventData, E_SINGLE_LIGHT_TIMEOUT)) {
+        generic_behavior(userData);
     }
 }
 
