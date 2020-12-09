@@ -3,11 +3,12 @@
 #include "coord2b/functions/fsm.h"
 #include "coord2b/functions/event_loop.h"
 
-const double GLOBAL_TIMEOUT_SECS = 10.;
-const double SINGLE_LIGHT_TIMEOUT_SECS = 0.5;
+const double GLOBAL_TIMEOUT_SECS = 15.;
+const double SINGLE_LIGHT_TIMEOUT_SECS = 0.6;
 
 enum e_events {
-    E_RED_ENTERED = 0,
+    E_STEP = 0,
+    E_RED_ENTERED,
     E_RED_YELLOW_ENTERED,
     E_GREEN_ENTERED,
     E_GREEN_YELLOW_ENTERED,
@@ -44,42 +45,11 @@ enum e_transitions {
 };
 
 enum e_reactions {
-    R_ALWAYS_TRUE = 0,
-    R_GLOBAL_TIMER,
-    R_NOT_SINGLE_LIGHT_TIMEOUT,
+    R_GLOBAL_TIMER = 0,
     R_SINGLE_LIGHT_TIMEOUT,
+    R_ALWAYS_TRUE,
     NUM_REACTIONS
 };
-
-enum e_behaviors {
-    B_RED_ENTERED = 0,
-    B_RED_YELLOW_ENTERED,
-    B_GREEN_ENTERED,
-    B_GREEN_YELLOW_ENTERED,
-    NUM_BEHAVIORS
-};
-
-_Bool condition_always_true(struct events *eventData) { return true; }
-
-_Bool condition_global_timeout(struct events *eventData) { return consume_event(eventData, E_GLOBAL_TIMEOUT); }
-
-_Bool condition_not_single_light_timeout(struct events *eventData) {
-    return !consume_event(eventData, E_SINGLE_LIGHT_TIMEOUT);
-}
-
-_Bool condition_single_light_timeout(struct events *eventData) {
-    return consume_event(eventData, E_SINGLE_LIGHT_TIMEOUT);
-}
-
-_Bool condition_red_entered(struct events *eventData) { return consume_event(eventData, E_RED_ENTERED); }
-
-_Bool condition_red_yel_entered(struct events *eventData) { return consume_event(eventData, E_RED_YELLOW_ENTERED); }
-
-_Bool condition_green_entered(struct events *eventData) { return consume_event(eventData, E_GREEN_ENTERED); }
-
-_Bool condition_green_yel_entered(struct events *eventData) {
-    return consume_event(eventData, E_GREEN_YELLOW_ENTERED);
-}
 
 struct user_data {
     _Bool redOn;
@@ -120,6 +90,24 @@ void green_yel_behavior(struct user_data * userData) {
     userData->yellowOn = true;
     userData->greenOn = false;
     generic_behavior(userData);
+}
+
+void fsm_behavior(struct events *eventData, struct user_data * userData) {
+    if (consume_event(eventData, E_RED_ENTERED)) {
+        red_behavior(userData);
+    }
+
+    if (consume_event(eventData, E_RED_YELLOW_ENTERED)) {
+        red_yel_behavior(userData);
+    }
+
+    if (consume_event(eventData, E_GREEN_ENTERED)) {
+        green_behavior(userData);
+    }
+
+    if (consume_event(eventData, E_GREEN_YELLOW_ENTERED)) {
+        green_yel_behavior(userData);
+    }
 }
 
 int main() {
@@ -177,52 +165,28 @@ int main() {
     };
 
     struct event_reaction reactions[NUM_REACTIONS] = {
-        [R_ALWAYS_TRUE] = {
-            .numTransitions = 1,
-            .condition = &condition_always_true,
-            .transitionIndices = (unsigned int[]) {T_START_RED}
-        },
         [R_GLOBAL_TIMER] = {
-            .numTransitions = 4,
-            .condition = &condition_global_timeout,
+            .numTransitions = 4, .conditionEventIndex = E_GLOBAL_TIMEOUT,
             .transitionIndices = (unsigned int[]) {T_RED_EXIT, T_RED_YELLOW_EXIT, T_GREEN_EXIT, T_GREEN_YELLOW_EXIT}
         },
-        [R_NOT_SINGLE_LIGHT_TIMEOUT] = {
-            .numTransitions = 4,
-            .condition = &condition_not_single_light_timeout,
-            .transitionIndices = (unsigned int[]) {
-                T_RED_RED, T_RED_YELLOW_YELLOW, T_GREEN_GREEN, T_GREEN_YELLOW_YELLOW
-            }
-        },
         [R_SINGLE_LIGHT_TIMEOUT] = {
-            .numTransitions = 4,
-            .condition = &condition_single_light_timeout,
+            .numTransitions = 4, .conditionEventIndex = E_SINGLE_LIGHT_TIMEOUT,
             .transitionIndices = (unsigned int[]) {
                 T_RED_YELLOW, T_RED_YELLOW_GREEN, T_GREEN_YELLOW, T_GREEN_YELLOW_RED
             }
+        },
+        [R_ALWAYS_TRUE] = {
+            .numTransitions = 5, .conditionEventIndex = E_STEP,
+            .transitionIndices = (unsigned int[]) {
+                T_START_RED, T_RED_RED, T_RED_YELLOW_YELLOW, T_GREEN_GREEN, T_GREEN_YELLOW_YELLOW
+            }
         }
-    };
-
-    struct event_behavior behaviors[NUM_BEHAVIORS] = {
-        [B_RED_ENTERED] = {
-            .condition = &condition_red_entered, .execute = (void (*)(void *)) &red_behavior
-        },
-        [B_RED_YELLOW_ENTERED] = {
-            .condition = &condition_red_yel_entered, .execute = (void (*)(void *)) &red_yel_behavior
-        },
-        [B_GREEN_ENTERED] = {
-            .condition = &condition_green_entered, .execute = (void (*)(void *)) &green_behavior
-        },
-        [B_GREEN_YELLOW_ENTERED] = {
-            .condition = &condition_green_yel_entered, .execute = (void (*)(void *)) &green_yel_behavior
-        },
     };
 
     struct fsm_nbx fsm = {
         .numStates = NUM_STATES,
         .numTransitions = NUM_TRANSITIONS,
         .numReactions = NUM_REACTIONS,
-        .numBehaviors = NUM_BEHAVIORS,
 
         .startStateIndex = S_START,
         .currentStateIndex = S_START,
@@ -232,9 +196,6 @@ int main() {
         .eventData = &eventData,
         .transitions = transitions,
         .reactions = reactions,
-        .behaviors = behaviors,
-
-        .data = (void *) &userData
     };
 
     printf("Starting traffic light example\n");
@@ -246,12 +207,15 @@ int main() {
             break;
         }
 
+        produce_event(fsm.eventData, E_STEP);
+
         /* setup timer events */
         now = clock();
 
         // timer for each light
         elapsedSingleLightSecs = ((double) (now - startSingleLight)) / CLOCKS_PER_SEC;
         if (elapsedSingleLightSecs > SINGLE_LIGHT_TIMEOUT_SECS) {
+            // printf("current state: %s\n", fsm.states[fsm.currentStateIndex].name);
             produce_event(&eventData, E_SINGLE_LIGHT_TIMEOUT);
             startSingleLight = now;
         }
@@ -261,8 +225,9 @@ int main() {
         if (elapsedSecs > GLOBAL_TIMEOUT_SECS) produce_event(&eventData, E_GLOBAL_TIMEOUT);
 
         /* run state machine, event loop */
+        fsm_behavior(fsm.eventData, &userData);
         fsm_step_nbx(&fsm);
-        event_loop_step(&eventData);
+        reconfig_event_buffers(&eventData);
     }
 
     return 0;

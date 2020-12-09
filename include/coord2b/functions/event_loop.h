@@ -9,7 +9,7 @@ extern "C" {
 
 void produce_event(struct events * eventData, unsigned int eventIndex);
 _Bool consume_event(struct events * eventData, unsigned int eventIndex);
-void event_loop_step(struct events * eventData);
+void reconfig_event_buffers(struct events * eventData);
 
 #ifdef __cplusplus
 }

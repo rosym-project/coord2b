@@ -13,7 +13,7 @@ _Bool consume_event(struct events * eventData, unsigned int eventIndex) {
     return eventData->currentEvents[eventIndex];
 }
 
-void event_loop_step(struct events * eventData) {
+void reconfig_event_buffers(struct events * eventData) {
     assert(eventData->futureEvents);
     assert(eventData->currentEvents);
 

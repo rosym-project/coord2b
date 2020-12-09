@@ -10,22 +10,11 @@ extern "C" {
 struct event_reaction {
     unsigned int numTransitions;
 
+    /* reaction will occur if event with this index is fired */
+    unsigned int conditionEventIndex;
+
+    /* transitions that can occur if the above event is fired */
     unsigned int *transitionIndices;    // [numTransitions]
-
-    /* function that check events and return whether the this reaction should take place
-     * must use consume_event() function
-     */
-    _Bool (*condition) (struct events *);
-};
-
-struct event_behavior {
-    /* function that check events and return whether the this reaction should take place
-     * must use consume_event() function
-     */
-    _Bool (*condition) (struct events *);
-
-    /* the behavior to be executed if compose_handled_event returns true */
-    void (*execute) (void *);
 };
 
 struct transition {
@@ -41,7 +30,6 @@ struct state {
 
 struct fsm_nbx {
     // configurations
-    unsigned int numBehaviors;
     unsigned int numReactions;
     unsigned int numTransitions;
     unsigned int numStates;
@@ -54,9 +42,7 @@ struct fsm_nbx {
     struct events * eventData;
 
     struct event_reaction * reactions;  // [numReactions]
-    struct event_behavior * behaviors;  // [numBehaviors]
     struct transition * transitions;    // [numTransitions]
-    void * data;
 };
 
 #ifdef __cplusplus

@@ -1,5 +1,4 @@
 #include <assert.h>
-#include<stdio.h>
 #include "coord2b/functions/fsm.h"
 #include "coord2b/functions/event_loop.h"
 
@@ -7,7 +6,6 @@ void fsm_step_nbx(struct fsm_nbx* fsm) {
     assert(fsm->eventData);
     assert(fsm->states);
     assert(fsm->reactions);
-    assert(fsm->behaviors);
     assert(fsm->transitions);
     assert(fsm->numStates > 1);
     assert(fsm->numTransitions > 0);
@@ -18,20 +16,14 @@ void fsm_step_nbx(struct fsm_nbx* fsm) {
     /* Exit if end state is reached */
     if (fsm->currentStateIndex == fsm->endStateIndex) return;
 
-    /* Handle current state behavior */
-    for (int i = 0; i < fsm->numBehaviors; i++) {
-        // skip if condition of behavior not met
-        if (!fsm->behaviors[i].condition(fsm->eventData)) continue;
-
-        // execute behavior
-        fsm->behaviors[i].execute(fsm->data);
-    }
-
     /* Handle transition into next state */
     int transIndex;
+    _Bool reactionFound = false;
     for (int i = 0; i < fsm->numReactions; i++) {
         // skip if event reaction not triggered
-        if (!fsm->reactions[i].condition(fsm->eventData)) continue;
+        if (!consume_event(fsm->eventData, fsm->reactions[i].conditionEventIndex)) continue;
+
+        reactionFound = true;
 
         // transition
         assert(fsm->reactions[i].numTransitions > 0);
@@ -55,6 +47,11 @@ void fsm_step_nbx(struct fsm_nbx* fsm) {
 
             break;
         }
-        // TODO: should checking reactions stop after finding the first valid one?
+
+        /* The following will stop processing further reactions. This implies that the order of reactions
+         * signifies the priority in which they're handled, and that only the first reaction will be taken
+         * into account.
+         */
+        if (reactionFound) break;
     }
 }
