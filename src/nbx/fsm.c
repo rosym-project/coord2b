@@ -18,12 +18,10 @@ void fsm_step_nbx(struct fsm_nbx* fsm) {
 
     /* Handle transition into next state */
     int transIndex;
-    _Bool reactionFound = false;
+    _Bool transitionFound = false;
     for (int i = 0; i < fsm->numReactions; i++) {
         // skip if event reaction not triggered
         if (!consume_event(fsm->eventData, fsm->reactions[i].conditionEventIndex)) continue;
-
-        reactionFound = true;
 
         // transition
         assert(fsm->reactions[i].numTransitions > 0);
@@ -36,10 +34,11 @@ void fsm_step_nbx(struct fsm_nbx* fsm) {
             if (fsm->currentStateIndex != fsm->transitions[transIndex].startStateIndex) continue;
 
             // transition
+            transitionFound = true;
             fsm->currentStateIndex = fsm->transitions[transIndex].endStateIndex;
 
             // fire any requested events
-            if (fsm->transitions[transIndex].numFiredEvents == 0) continue;
+            if (fsm->transitions[transIndex].numFiredEvents == 0) break;
             assert(fsm->transitions[transIndex].firedEventIndices);
             for (int j = 0; j < fsm->transitions[transIndex].numFiredEvents; j++) {
                 produce_event(fsm->eventData, fsm->transitions[transIndex].firedEventIndices[j]);
@@ -49,9 +48,9 @@ void fsm_step_nbx(struct fsm_nbx* fsm) {
         }
 
         /* The following will stop processing further reactions. This implies that the order of reactions
-         * signifies the priority in which they're handled, and that only the first reaction will be taken
-         * into account.
+         * and reactions signifies the priority in which they're handled, and that only the first transition
+         * will be taken into account.
          */
-        if (reactionFound) break;
+        if (transitionFound) break;
     }
 }

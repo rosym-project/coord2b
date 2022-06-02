@@ -16,7 +16,7 @@ extern "C" {
 
 struct events {
     unsigned int numEvents;
-    _Bool * currentEvents;          // [numEvents]
+    _Bool * currentEvents;  // [numEvents]
     _Bool * futureEvents;   // [numEvents]
 };
 

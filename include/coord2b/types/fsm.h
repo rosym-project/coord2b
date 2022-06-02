@@ -35,8 +35,8 @@ struct fsm_nbx {
     unsigned int numStates;
 
     struct state * states;              // [numStates]
-    unsigned int startStateIndex;
-    unsigned int endStateIndex;
+    const unsigned int startStateIndex;
+    const unsigned int endStateIndex;
     unsigned int currentStateIndex;
 
     struct events * eventData;
