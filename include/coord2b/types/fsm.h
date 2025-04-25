@@ -25,7 +25,7 @@ struct transition {
 };
 
 struct state {
-    char * name;
+    const char * name;
 };
 
 struct fsm_nbx {
