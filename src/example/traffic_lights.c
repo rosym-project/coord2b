@@ -8,10 +8,7 @@ const double SINGLE_LIGHT_TIMEOUT_SECS = 0.6;
 
 enum e_events {
     E_STEP = 0,
-    E_RED_ENTERED,
-    E_RED_YELLOW_ENTERED,
-    E_GREEN_ENTERED,
-    E_GREEN_YELLOW_ENTERED,
+    E_LIGHT_CHANGED,
     E_SINGLE_LIGHT_TIMEOUT,
     E_GLOBAL_TIMEOUT,
     NUM_EVENTS
@@ -85,27 +82,29 @@ void green_behavior(struct user_data * userData) {
 void green_yel_behavior(struct user_data * userData) {
     userData->redOn = false;
     userData->yellowOn = true;
-    userData->greenOn = false;
+    userData->greenOn = true;
 }
 
-void fsm_behavior(struct events *eventData, struct user_data * userData) {
-    if (consume_event(eventData, E_RED_ENTERED)) {
-        red_behavior(userData);
+void fsm_behavior(struct fsm_nbx *fsm, struct user_data * userData) {
+    switch (fsm->currentStateIndex) {
+        case S_RED:
+            red_behavior(userData);
+            break;
+        case S_RED_YELLOW:
+            red_yel_behavior(userData);
+            break;
+        case S_GREEN:
+            green_behavior(userData);
+            break;
+        case S_GREEN_YELLOW:
+            green_yel_behavior(userData);
+            break;
+        default:
+            printf("Unrecognized current state: %d\n", fsm->currentStateIndex);
+            break;
     }
 
-    if (consume_event(eventData, E_RED_YELLOW_ENTERED)) {
-        red_yel_behavior(userData);
-    }
-
-    if (consume_event(eventData, E_GREEN_ENTERED)) {
-        green_behavior(userData);
-    }
-
-    if (consume_event(eventData, E_GREEN_YELLOW_ENTERED)) {
-        green_yel_behavior(userData);
-    }
-
-    if (consume_event(eventData, E_SINGLE_LIGHT_TIMEOUT)) {
+    if (consume_event(fsm->eventData, E_LIGHT_CHANGED)) {
         generic_behavior(userData);
     }
 }
@@ -126,57 +125,35 @@ int main() {
     struct user_data userData = { .greenOn = false, .yellowOn = false, .redOn = false };
 
     struct transition transitions[NUM_TRANSITIONS] = {
-        [T_START_RED] = {
-            .startStateIndex = S_START, .endStateIndex = S_RED,
-            .numFiredEvents = 1, .firedEventIndices = (unsigned int[]) { E_RED_ENTERED }
-        },
-        [T_RED_EXIT] = { .startStateIndex = S_RED, .endStateIndex = S_EXIT, .numFiredEvents = 0 },
-        [T_RED_RED]  = { .startStateIndex = S_RED, .endStateIndex = S_RED,  .numFiredEvents = 0 },
-        [T_RED_YELLOW] = {
-            .startStateIndex = S_RED, .endStateIndex = S_RED_YELLOW,
-            .numFiredEvents = 1, .firedEventIndices = (unsigned int []) { E_RED_YELLOW_ENTERED }
-        },
-        [T_RED_YELLOW_EXIT] = {
-            .startStateIndex = S_RED_YELLOW, .endStateIndex = S_EXIT, .numFiredEvents = 0
-        },
-        [T_RED_YELLOW_YELLOW] = {
-            .startStateIndex = S_RED_YELLOW, .endStateIndex = S_RED_YELLOW, .numFiredEvents = 0
-        },
-        [T_RED_YELLOW_GREEN] = {
-            .startStateIndex = S_RED_YELLOW, .endStateIndex = S_GREEN,
-            .numFiredEvents = 1, .firedEventIndices = (unsigned int []) { E_GREEN_ENTERED }
-        },
-        [T_GREEN_EXIT]  = { .startStateIndex = S_GREEN, .endStateIndex = S_EXIT,  .numFiredEvents = 0 },
-        [T_GREEN_GREEN] = { .startStateIndex = S_GREEN, .endStateIndex = S_GREEN, .numFiredEvents = 0 },
-        [T_GREEN_YELLOW] = {
-            .startStateIndex = S_GREEN, .endStateIndex = S_GREEN_YELLOW,
-            .numFiredEvents = 1, .firedEventIndices = (unsigned int []) { E_GREEN_YELLOW_ENTERED }
-        },
-        [T_GREEN_YELLOW_EXIT] = {
-            .startStateIndex = S_GREEN_YELLOW, .endStateIndex = S_EXIT, .numFiredEvents = 0
-        },
-        [T_GREEN_YELLOW_YELLOW] = {
-            .startStateIndex = S_GREEN_YELLOW, .endStateIndex = S_GREEN_YELLOW, .numFiredEvents = 0
-        },
-        [T_GREEN_YELLOW_RED] = {
-            .startStateIndex = S_GREEN_YELLOW, .endStateIndex = S_RED,
-            .numFiredEvents = 1, .firedEventIndices = (unsigned int []) { E_RED_ENTERED }
-        }
+        [T_START_RED] = { .startStateIndex = S_START, .endStateIndex = S_RED },
+        [T_RED_EXIT] = { .startStateIndex = S_RED, .endStateIndex = S_EXIT },
+        [T_RED_RED]  = { .startStateIndex = S_RED, .endStateIndex = S_RED },
+        [T_RED_YELLOW] = { .startStateIndex = S_RED, .endStateIndex = S_RED_YELLOW },
+        [T_RED_YELLOW_EXIT] = { .startStateIndex = S_RED_YELLOW, .endStateIndex = S_EXIT },
+        [T_RED_YELLOW_YELLOW] = { .startStateIndex = S_RED_YELLOW, .endStateIndex = S_RED_YELLOW },
+        [T_RED_YELLOW_GREEN] = { .startStateIndex = S_RED_YELLOW, .endStateIndex = S_GREEN },
+        [T_GREEN_EXIT]  = { .startStateIndex = S_GREEN, .endStateIndex = S_EXIT },
+        [T_GREEN_GREEN] = { .startStateIndex = S_GREEN, .endStateIndex = S_GREEN },
+        [T_GREEN_YELLOW] = { .startStateIndex = S_GREEN, .endStateIndex = S_GREEN_YELLOW },
+        [T_GREEN_YELLOW_EXIT] = { .startStateIndex = S_GREEN_YELLOW, .endStateIndex = S_EXIT },
+        [T_GREEN_YELLOW_YELLOW] = { .startStateIndex = S_GREEN_YELLOW, .endStateIndex = S_GREEN_YELLOW },
+        [T_GREEN_YELLOW_RED] = { .startStateIndex = S_GREEN_YELLOW, .endStateIndex = S_RED }
     };
 
     struct event_reaction reactions[NUM_REACTIONS] = {
         [R_GLOBAL_TIMER] = {
-            .numTransitions = 4, .conditionEventIndex = E_GLOBAL_TIMEOUT,
+            .numTransitions = 4, .conditionEventIndex = E_GLOBAL_TIMEOUT, .numFiredEvents = 0,
             .transitionIndices = (unsigned int[]) {T_RED_EXIT, T_RED_YELLOW_EXIT, T_GREEN_EXIT, T_GREEN_YELLOW_EXIT}
         },
         [R_SINGLE_LIGHT_TIMEOUT] = {
             .numTransitions = 4, .conditionEventIndex = E_SINGLE_LIGHT_TIMEOUT,
             .transitionIndices = (unsigned int[]) {
                 T_RED_YELLOW, T_RED_YELLOW_GREEN, T_GREEN_YELLOW, T_GREEN_YELLOW_RED
-            }
+            },
+            .numFiredEvents = 1, .firedEventIndices = (unsigned int[]) { E_LIGHT_CHANGED }
         },
         [R_ALWAYS_TRUE] = {
-            .numTransitions = 5, .conditionEventIndex = E_STEP,
+            .numTransitions = 5, .conditionEventIndex = E_STEP, .numFiredEvents = 0,
             .transitionIndices = (unsigned int[]) {
                 T_START_RED, T_RED_RED, T_RED_YELLOW_YELLOW, T_GREEN_GREEN, T_GREEN_YELLOW_YELLOW
             }
@@ -225,7 +202,7 @@ int main() {
         if (elapsedSecs > GLOBAL_TIMEOUT_SECS) produce_event(&eventData, E_GLOBAL_TIMEOUT);
 
         /* run state machine, event loop */
-        fsm_behavior(fsm.eventData, &userData);
+        fsm_behavior(&fsm, &userData);
         fsm_step_nbx(&fsm);
         reconfig_event_buffers(&eventData);
     }
