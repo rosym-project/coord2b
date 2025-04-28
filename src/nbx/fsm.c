@@ -37,14 +37,16 @@ void fsm_step_nbx(struct fsm_nbx* fsm) {
             transitionFound = true;
             fsm->currentStateIndex = fsm->transitions[transIndex].endStateIndex;
 
-            // fire any requested events
-            if (fsm->transitions[transIndex].numFiredEvents == 0) break;
-            assert(fsm->transitions[transIndex].firedEventIndices);
-            for (int j = 0; j < fsm->transitions[transIndex].numFiredEvents; j++) {
-                produce_event(fsm->eventData, fsm->transitions[transIndex].firedEventIndices[j]);
-            }
-
+            // will only process first transition
             break;
+        }
+
+        // fire any requested events
+        if (fsm->reactions[i].numFiredEvents > 0) {
+            assert(fsm->reactions[i].firedEventIndices);
+            for (int j = 0; j < fsm->reactions[i].numFiredEvents; j++) {
+                produce_event(fsm->eventData, fsm->reactions[i].firedEventIndices[j]);
+            }
         }
 
         /* The following will stop processing further reactions. This implies that the order of reactions

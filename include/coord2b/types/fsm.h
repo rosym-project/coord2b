@@ -15,13 +15,15 @@ struct event_reaction {
 
     /* transitions that can occur if the above event is fired */
     unsigned int *transitionIndices;    // [numTransitions]
+
+    /* events to be fired as the result of the reaction */
+    unsigned int numFiredEvents;
+    unsigned int *firedEventIndices;    // [numFiredEvents]
 };
 
 struct transition {
     unsigned int startStateIndex;
     unsigned int endStateIndex;
-    unsigned int numFiredEvents;
-    unsigned int *firedEventIndices;    // [numFiredEvents]
 };
 
 struct state {
