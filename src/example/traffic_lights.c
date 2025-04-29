@@ -42,9 +42,19 @@ enum e_transitions {
 };
 
 enum e_reactions {
-    R_GLOBAL_TIMER = 0,
-    R_SINGLE_LIGHT_TIMEOUT,
-    R_ALWAYS_TRUE,
+    R_GLOBAL_TIMER_RED = 0,
+    R_GLOBAL_TIMER_RED_YELLOW,
+    R_GLOBAL_TIMER_GREEN,
+    R_GLOBAL_TIMER_GREEN_YELLOW,
+    R_SINGLE_LIGHT_TIMEOUT_RED,
+    R_SINGLE_LIGHT_TIMEOUT_RED_YELLOW,
+    R_SINGLE_LIGHT_TIMEOUT_GREEN,
+    R_SINGLE_LIGHT_TIMEOUT_GREEN_YELLOW,
+    R_ALWAYS_TRUE_START,
+    R_ALWAYS_TRUE_RED,
+    R_ALWAYS_TRUE_RED_YELLOW,
+    R_ALWAYS_TRUE_GREEN,
+    R_ALWAYS_TRUE_GREEN_YELLOW,
     NUM_REACTIONS
 };
 
@@ -87,6 +97,9 @@ void green_yel_behavior(struct user_data * userData) {
 
 void fsm_behavior(struct fsm_nbx *fsm, struct user_data * userData) {
     switch (fsm->currentStateIndex) {
+        case S_START:
+        case S_EXIT:
+            break;
         case S_RED:
             red_behavior(userData);
             break;
@@ -141,23 +154,39 @@ int main() {
     };
 
     struct event_reaction reactions[NUM_REACTIONS] = {
-        [R_GLOBAL_TIMER] = {
-            .numTransitions = 4, .conditionEventIndex = E_GLOBAL_TIMEOUT, .numFiredEvents = 0,
-            .transitionIndices = (unsigned int[]) {T_RED_EXIT, T_RED_YELLOW_EXIT, T_GREEN_EXIT, T_GREEN_YELLOW_EXIT}
+        [R_GLOBAL_TIMER_RED] = {
+            .conditionEventIndex = E_GLOBAL_TIMEOUT, .numFiredEvents = 0, .transitionIndex = T_RED_EXIT
         },
-        [R_SINGLE_LIGHT_TIMEOUT] = {
-            .numTransitions = 4, .conditionEventIndex = E_SINGLE_LIGHT_TIMEOUT,
-            .transitionIndices = (unsigned int[]) {
-                T_RED_YELLOW, T_RED_YELLOW_GREEN, T_GREEN_YELLOW, T_GREEN_YELLOW_RED
-            },
+        [R_GLOBAL_TIMER_RED_YELLOW] = {
+            .conditionEventIndex = E_GLOBAL_TIMEOUT, .numFiredEvents = 0, .transitionIndex = T_RED_YELLOW_EXIT
+        },
+        [R_GLOBAL_TIMER_GREEN] = {
+            .conditionEventIndex = E_GLOBAL_TIMEOUT, .numFiredEvents = 0, .transitionIndex = T_GREEN_EXIT
+        },
+        [R_GLOBAL_TIMER_GREEN_YELLOW] = {
+            .conditionEventIndex = E_GLOBAL_TIMEOUT, .numFiredEvents = 0, .transitionIndex = T_GREEN_YELLOW_EXIT
+        },
+        [R_SINGLE_LIGHT_TIMEOUT_RED] = {
+            .conditionEventIndex = E_SINGLE_LIGHT_TIMEOUT, .transitionIndex = T_RED_YELLOW,
             .numFiredEvents = 1, .firedEventIndices = (unsigned int[]) { E_LIGHT_CHANGED }
         },
-        [R_ALWAYS_TRUE] = {
-            .numTransitions = 5, .conditionEventIndex = E_STEP, .numFiredEvents = 0,
-            .transitionIndices = (unsigned int[]) {
-                T_START_RED, T_RED_RED, T_RED_YELLOW_YELLOW, T_GREEN_GREEN, T_GREEN_YELLOW_YELLOW
-            }
-        }
+        [R_SINGLE_LIGHT_TIMEOUT_RED_YELLOW] = {
+            .conditionEventIndex = E_SINGLE_LIGHT_TIMEOUT, .transitionIndex = T_RED_YELLOW_GREEN,
+            .numFiredEvents = 1, .firedEventIndices = (unsigned int[]) { E_LIGHT_CHANGED }
+        },
+        [R_SINGLE_LIGHT_TIMEOUT_GREEN] = {
+            .conditionEventIndex = E_SINGLE_LIGHT_TIMEOUT, .transitionIndex = T_GREEN_YELLOW,
+            .numFiredEvents = 1, .firedEventIndices = (unsigned int[]) { E_LIGHT_CHANGED }
+        },
+        [R_SINGLE_LIGHT_TIMEOUT_GREEN_YELLOW] = {
+            .conditionEventIndex = E_SINGLE_LIGHT_TIMEOUT, .transitionIndex = T_GREEN_YELLOW_RED,
+            .numFiredEvents = 1, .firedEventIndices = (unsigned int[]) { E_LIGHT_CHANGED }
+        },
+        [R_ALWAYS_TRUE_START] = { .conditionEventIndex = E_STEP, .numFiredEvents = 0, .transitionIndex = T_START_RED },
+        [R_ALWAYS_TRUE_RED] = { .conditionEventIndex = E_STEP, .numFiredEvents = 0, .transitionIndex = T_RED_RED },
+        [R_ALWAYS_TRUE_RED_YELLOW] = { .conditionEventIndex = E_STEP, .numFiredEvents = 0, .transitionIndex = T_RED_YELLOW_YELLOW },
+        [R_ALWAYS_TRUE_GREEN] = { .conditionEventIndex = E_STEP, .numFiredEvents = 0, .transitionIndex = T_GREEN_GREEN },
+        [R_ALWAYS_TRUE_GREEN_YELLOW] = { .conditionEventIndex = E_STEP, .numFiredEvents = 0, .transitionIndex = T_GREEN_YELLOW_YELLOW }
     };
 
     struct fsm_nbx fsm = {
