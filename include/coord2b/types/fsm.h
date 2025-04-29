@@ -8,13 +8,11 @@ extern "C" {
 #endif
 
 struct event_reaction {
-    unsigned int numTransitions;
-
     /* reaction will occur if event with this index is fired */
     unsigned int conditionEventIndex;
 
-    /* transitions that can occur if the above event is fired */
-    unsigned int *transitionIndices;    // [numTransitions]
+    /* transition that can occur if the above event is fired */
+    unsigned int transitionIndex;
 
     /* events to be fired as the result of the reaction */
     unsigned int numFiredEvents;
